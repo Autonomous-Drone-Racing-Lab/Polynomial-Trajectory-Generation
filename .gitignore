@@ -1,0 +1,15 @@
+
+# Workflow to ignore all executable files without extension Must always be first
+# Ignore all
+*
+# Unignore all with extensions
+!*.*
+# Unignore all dirs
+!*/
+
+/.vscode
+/build
+/CMakeFiles
+*.cmake
+CMakeCache.txt
+*.a
