@@ -45,10 +45,26 @@ git submodule update --init
 ```
 
 2. Install Eigen
+```
+sudo apt install libeigen3-dev
+```
 
 3. Install glog
+From outside this directory e.g. `code` directory, run
+```
+# Fetch glog in version 6
+git clone https://github.com/google/glog.git --branch v0.6.0
+cd glog
+
+cmake -S . -B build -G "Unix Makefiles"
+cmake --build build
+cmake --build build --target install
+```
 
 4. Install YAML CPP
+```
+sudo apt-get install libyaml-cpp-dev
+```
 
 ### Build package
 Building generates a python binding making a trajectoryg generation function accessible from python. The package is built using CMAKE. To gurantee that the python installation is in the right environemt, always build only in the `drone` environment. General steps are described below
