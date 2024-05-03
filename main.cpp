@@ -2,6 +2,7 @@
 #include <glog/logging.h>
 
 #include <mav_trajectory_generation/polynomial_optimization_linear.h>
+#include <mav_trajectory_generation/trajectory.h>
 #include <Eigen/Core>
 #include <fstream>
 #include <sstream>
@@ -30,8 +31,6 @@ void parseVerticesFromFile(const std::string& file_path, mav_trajectory_generati
             LOG(ERROR) << "Error parsing line: " << line;
             continue;
         }
-
-        std::cout << "Adding point (" << x << ", " << y << ", " << z << ") to path." << std::endl;
 
         points.emplace_back(x, y, z);
     }
@@ -62,19 +61,38 @@ void parseVerticesFromFile(const std::string& file_path, mav_trajectory_generati
     }
 }
 
+void writeSamplingPointsToFile(const std::string& file_path, const std::vector<Eigen::VectorXd>& points, const std::vector<double>& times) {
+    std::ofstream file(file_path);
+    if (!file.is_open()) {
+        LOG(ERROR) << "Failed to open file: " << file_path;
+        return;
+    }
+
+    for (size_t i = 0; i < points.size(); ++i) {
+        // return comma separated values
+        file << times[i] << ", ";
+        for (int j = 0; j < points[i].size() - 1; ++j) {
+            file << points[i][j] << ", ";
+        }
+        file << points[i][points[i].size() - 1];
+        file << std::endl;
+    }
+}
+
 
 int main(){
     mav_trajectory_generation::Vertex::Vector vertices;
   const int dimension = 3;
   const int derivative_to_optimize = mav_trajectory_generation::derivative_order::SNAP;
-  std::string file_path = "/home/tim/code/lsy_drone_racing/path.txt";
+  std::string input_path = "/home/tim/code/lsy_drone_racing/path.txt";
+  std::string output_path = "/home/tim/code/lsy_drone_racing/traj.txt";
 
-  parseVerticesFromFile(file_path, vertices, dimension, derivative_to_optimize);
+  parseVerticesFromFile(input_path, vertices, dimension, derivative_to_optimize);
 
 
 std::vector<double> segment_times;
-const double v_max = 2.0;
-const double a_max = 2.0;
+const double v_max = 3.0;
+const double a_max = 5.0;
 segment_times = estimateSegmentTimes(vertices, v_max, a_max);
 
 const int N = 10;
@@ -82,22 +100,20 @@ mav_trajectory_generation::PolynomialOptimization<N> opt(dimension);
 opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
 opt.solveLinear();
 
-// trajectory time is the sum of all segment times
-opt.getSegmentTimes(&segment_times);
+// Convert to trajectory
+mav_trajectory_generation::Trajectory trajectory;
+opt.getTrajectory(&trajectory);
 
-// print segment times
-for (size_t i = 0; i < segment_times.size(); ++i) {
-  LOG(INFO) << "Segment " << i << " time: " << segment_times[i];
-}
+// Sample from trajectory
+double min_time = trajectory.getMinTime();
+double max_time = trajectory.getMaxTime();
+double sampling_intervall = 0.1;
+int derivative_order = mav_trajectory_generation::derivative_order::POSITION;
+std::vector<Eigen::VectorXd> result;
+std::vector<double> sampling_times;
+trajectory.evaluateRange(min_time, max_time, sampling_intervall, derivative_order, &result, &sampling_times);
 
+std::cout << "Tejectory generated that passed track in " << max_time << " seconds." << std::endl;
 
-
-mav_trajectory_generation::Segment::Vector segments;
-opt.getSegments(&segments);
-
-// print segments
-for (size_t i = 0; i < segments.size(); ++i) {
- // LOG(INFO) << "Segment " << i << ": " << segments[i];
-}
-
+writeSamplingPointsToFile(output_path, result, sampling_times);
 }

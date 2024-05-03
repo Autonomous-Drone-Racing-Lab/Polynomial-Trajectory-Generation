@@ -5,6 +5,8 @@ project(mav_trajectory_generation)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+
+
 # Find yaml-cpp package
 find_package(yaml-cpp REQUIRED)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
@@ -16,7 +18,7 @@ include_directories(include ${EIGEN3_INCLUDE_DIR})
 
 
 # Create a library from the source files in the src/ directory
-add_library(${PROJECT_NAME} 
+add_library(${PROJECT_NAME} STATIC
   src/motion_defines.cpp
   src/polynomial.cpp
   src/segment.cpp
@@ -27,23 +29,17 @@ add_library(${PROJECT_NAME}
   src/io.cpp
   src/rpoly/rpoly_ak1.cpp
 )
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
 # Link against yaml-cpp
 target_link_libraries(${PROJECT_NAME} ${YAML_CPP_LIBRARIES})
+target_link_libraries (${PROJECT_NAME} glog::glog)
+target_link_libraries (${PROJECT_NAME} Eigen3::Eigen)
 
-# Create an executable
-add_executable(main main.cpp)
+
+add_subdirectory(extern/pybind11)
+pybind11_add_module(polynomial_trajectory src/pybind.cpp)
 
 # Link the executable against the library
-target_link_libraries(main ${PROJECT_NAME})
-
-target_link_libraries (main glog::glog)
-target_link_libraries (main Eigen3::Eigen)
-target_link_libraries (main glog::glog)
-
-# Specify the install targets (optional)
-# install(TARGETS ${PROJECT_NAME} polynomial_timing_evaluation
-#   LIBRARY DESTINATION lib
-#   RUNTIME DESTINATION bin
-# )
+target_link_libraries(polynomial_trajectory PRIVATE ${PROJECT_NAME})

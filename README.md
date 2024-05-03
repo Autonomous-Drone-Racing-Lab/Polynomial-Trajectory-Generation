@@ -1,3 +1,5 @@
+
+
 # mav_trajectory_generation
 This repository contains tools for polynomial trajectory generation and optimization based on methods described in [1].
 These techniques are especially suitable for rotary-wing micro aerial vehicles (MAVs).
@@ -34,51 +36,32 @@ Michael Burri, Helen Oleynikova, Markus Achtelik, and Roland Siegwart, “**Real
 }
 ```
 
-## Installation Instructions (Ubuntu)
-To install this package with [ROS Indigo](http://wiki.ros.org/indigo/Installation/Ubuntu) or [ROS Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu):
+## How To Use
 
-1. Install additional system dependencies (swap indigo for kinetic or melodic as necessary):
-
-** Note: ROS melodic requires libyaml-cpp-dev and does not build with yaml_cpp_catkin in your catkin workspace!
-
+### Environment Setup
+1. Install pybind bindings
 ```
-sudo apt-get install python-wstool python-catkin-tools ros-indigo-cmake-modules libyaml-cpp-dev
+git submodule update --init
 ```
 
-2. Set up a catkin workspace (if not already done):
+2. Install Eigen
 
-```
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws
-catkin init
-catkin config --extend /opt/ros/indigo
-catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
-catkin config --merge-devel
-```
+3. Install glog
 
-3. Install the repository and its dependencies (with rosinstall):
+4. Install YAML CPP
 
+### Build package
+Building generates a python binding making a trajectoryg generation function accessible from python. The package is built using CMAKE. To gurantee that the python installation is in the right environemt, always build only in the `drone` environment. General steps are described below
 ```
-cd src
-wstool init
-wstool set --git mav_trajectory_generation git@github.com:ethz-asl/mav_trajectory_generation.git -y
-wstool update
-wstool merge mav_trajectory_generation/install/mav_trajectory_generation_https.rosinstall
-wstool update -j8
-echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
-source /opt/ros/indigo/setup.bash
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-In case you have your SSH keys for github set up, feel free to use the ssh rosinstall instead:
-```
-wstool merge mav_trajectory_generation/install/mav_trajectory_generation_ssh.rosinstall
-```
+### Call in Python
+In python code import the package via `import polynomial_trajectory`. Call the function as `polynomial_trajectory.generate_trajectory(waypoints: np.ndarray, v_max: double, a_max: double, sampling_intervall: double) -> np.ndarray([x,x_dot, y, y_dot, z, z_dot, t])`
 
-4. Use [catkin_build](http://catkin-tools.readthedocs.io/en/latest/verbs/catkin_build.html) to build the repository:
-
-```
-catkin build mav_trajectory_generation_ros
-```
 
 
 ## Basics
