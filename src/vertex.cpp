@@ -143,11 +143,28 @@ bool Vertex::removeConstraint(int type) {
     return false;
   }
 }
-
 void Vertex::makeStartOrEnd(const Eigen::VectorXd& constraint,
                             int up_to_derivative) {
-  addConstraint(derivative_order::POSITION, constraint);
-  for (int i = 1; i <= up_to_derivative; ++i) {
+  // create pos, vel, acc constraint by reading 3 elements each time
+  Eigen::VectorXd constraint_pos = Eigen::VectorXd::Zero(D_);
+  Eigen::VectorXd constraint_vel = Eigen::VectorXd::Zero(D_);
+  Eigen::VectorXd constraint_acc = Eigen::VectorXd::Zero(D_);
+  for (int i = 0; i < D_; ++i) {
+    if (i < constraint.rows()) {
+      constraint_pos[i] = constraint[i];
+    }
+    if (i + D_ < constraint.rows()) {
+      constraint_vel[i] = constraint[i + D_];
+    }
+    if (i + 2 * D_ < constraint.rows()) {
+      constraint_acc[i] = constraint[i + 2 * D_];
+    }
+  }
+
+  addConstraint(derivative_order::POSITION, constraint_pos);
+  addConstraint(derivative_order::VELOCITY, constraint_vel);
+  addConstraint(derivative_order::ACCELERATION, constraint_acc);
+  for (int i = 3; i <= up_to_derivative; ++i) {
     constraints_[i] = ConstraintValue::Zero(static_cast<int>(D_));
   }
 }
