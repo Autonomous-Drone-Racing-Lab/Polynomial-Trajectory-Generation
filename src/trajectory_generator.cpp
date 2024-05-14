@@ -93,13 +93,16 @@ namespace poly_traj
             result(i, 6) = position_samples[i](2);
             result(i, 7) = velocity_samples[i](2);
             result(i, 8) = acceleration_samples[i](2);
-            result(i, 9) = sampling_times[i];
+            result(i, 9) = sampling_times[i] + startTimeOffset;
         }
 
 
         return true;
     }
 
+    /**
+     * @brief Generate a trajectory from a list of waypoints. To make it smooth last waypoint of each segment is merged with first of the next by linear interpolation
+    */
     bool generateTrajectory(const std::vector<Eigen::MatrixXd> &waypoints, double v_max, double a_max, double sampling_intervall, const double startTimeOffset, const Eigen::Vector3d& initialVel, const Eigen::Vector3d& initialAcc, Eigen::MatrixXd &result)
     {   
         int no_waypoints = 0;
@@ -108,14 +111,43 @@ namespace poly_traj
             no_waypoints += waypoint.rows();
         }
 
-        Eigen::MatrixXd waypoints_matrix(no_waypoints, 3);
-        int row = 0;
-        for (const auto &inner_waypoints : waypoints)
-        {   
-            int no_waypoints = inner_waypoints.rows();
-            waypoints_matrix.block(row, 0, no_waypoints, 3) = inner_waypoints;
-            row += inner_waypoints.rows();
+        int no_consecutive_segments = waypoints.size() - 1;
+        no_waypoints -= no_consecutive_segments;
+
+        // add all waypoints to a single matrix
+        // however for each consecutive segment merge the last point of the previous
+        // and the first point of the next, by linear interpolation
+        Eigen::MatrixXd mergedPoints(no_consecutive_segments, 3);
+        for(int i = 0; i < waypoints.size() - 1; i++){
+            const Eigen::VectorXd& lastPoint = waypoints[i].row(waypoints[i].rows() - 1);
+            const Eigen::VectorXd& firstPoint = waypoints[i + 1].row(0);
+
+            Eigen::VectorXd mergedPoint = (lastPoint + firstPoint) / 2;
+            mergedPoints.row(i) = mergedPoint;
         }
+        
+        Eigen::MatrixXd waypoints_matrix(no_waypoints, 3);
+        
+        
+        int row = 1;
+        // add first row, as it is not merged
+        waypoints_matrix.row(0) = waypoints[0].row(0);
+        int merged_point_idx = 0;
+        for(const auto& innerWaypoints : waypoints){
+           // add second until second to last element
+           int noWaypoints = innerWaypoints.rows() - 2;
+           waypoints_matrix.block(row, 0, noWaypoints, 3) = innerWaypoints.block(1, 0, noWaypoints, 3);
+            row += noWaypoints;
+           // add merged point
+           if(merged_point_idx < mergedPoints.rows()){
+               waypoints_matrix.row(row) = mergedPoints.row(merged_point_idx);
+               row++;
+               merged_point_idx++;
+           }
+        }
+        // add last row, as it is not merged
+        const auto& lastWaypoints = waypoints[waypoints.size() - 1];
+        waypoints_matrix.row(row) = lastWaypoints.row(lastWaypoints.rows() - 1);
         
 
         return generateTrajectory(waypoints_matrix, v_max, a_max, sampling_intervall, startTimeOffset, initialVel, initialAcc, result);
